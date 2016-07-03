@@ -1,0 +1,318 @@
+Compilers- COP4620
+Project 3 - Parser
+Stephen Repper
+Due:  			4/4/2013
+Submission:		4/4/2013
+
+
+
+*** Description ***
+
+This program takes source code as input and analyzes the input for syntax 
+and semantics. The lexical analyzer creates and returns tokens to be parsed and 
+semantically analyzed.  Each line of input is echoed to the screen as it is 
+processed by the lexical analyzer.  Analysis of each line's syntax and 
+semantics takes place after its echo statement, so that if the program fails to 
+process the code, the user will know at which line the program failed.  If the 
+program successfully processes the code, the program echoes the entire input to 
+screen (line-by-line with leading and following spaces trimmed) followed by 
+a simple success message: "Complete."  Appropriate error messages are 
+displayed upon any error.
+
+
+
+*** Running the program ***
+
+To compile the source code, enter the following at the prompt:
+	$ make
+
+An executable file, p3, is included in the shar file.  to run the program with 
+the proper input file, type:
+	$ p3 file.ext
+
+where 'file.ext' is the name of the source code with the appropriate extension.
+
+The program will execute, and output will be printed to the screen.  No files 
+are created by the program.
+
+
+
+*** Testing ***
+
+Testing was conducted with an extensive batch of .txt and .c files, which have 
+been included in a .zip file.  Due to the high volume of test files, log files 
+were not created during testing.  All files produced the expected results.
+
+
+
+*** Hierarchy ***
+
+It should be noted that not every function is elaborated under Parser.java, as 
+there is an incredibly large number of functions to reflect the grammar rules.  
+Each grammar function follows its logic using if/else statements.
+
+[Semantic.java]
+main()
+	create a new Semantic object with args[0]
+
+Semantic(String arg) - Constructor
+	create a new SymbolTable object
+	create a new File object with arg
+	create a new Parser object with File and SymbolTable
+	set File to null for garbage collection
+	call run() on Parser object
+
+
+[Parser.java]
+Parser(File file, SymbolTable symtab) - Constructor
+	create new LexicalAnalyzer lex using file
+	Set nextToken to next token from lex
+	set local SymbolTable to symtab
+
+run()
+	call first grammar function - program()
+	if main variable is false after run
+		print error
+		call semFail()
+	print success to screen after program() completes
+
+parseFail()
+	print "Parse failed."
+	exit program (code 1)
+
+semFail()
+	print "Semantic analysis failed."
+	exit program (code 1)
+
+Grammar functions
+	A comprehensive list of grammar functions is found at the end of this file.
+
+
+[SymbolTable.java]
+SymbolTable() - Constructor
+	set elements to new Element array [default size is 53]
+
+insert(Element e)
+	call hash(e.getname()) to calculate hashVal
+	set start value to hashVal
+	while the current index of elements is not null
+		if the current element matches e
+			print: Element already exists in table
+			return false (failure)
+		set hashVal to next index (wrapping)
+		if hashVal and start are equal
+			print: Symbol table is full
+			return false (failure)
+	insert e at current index
+	return true (success)
+
+lookup(SymbolTable table, String name)
+	set returnElement to null
+	set returnElement to get(table, name)
+	if returnElement is still null
+		print:  Attempt to use undeclared symbol
+	return returnElement
+
+get(SymbolTable table, String name)
+	call hash(name) to calculate hashVal
+	set start value to hashVal
+	while current element is not null and element does not match name
+		set hashVal to next index (wrapping)
+		if hashVal and start are equal
+			break
+	if current element is not null and current element matches name
+		return current element
+	else if previous table exists
+		call get(table.prev, name)
+	else
+		return null
+
+hash(String s)
+	set returnValue to 0
+	for i = 0 to length of s
+		returnValue = returnValue + 8^(i+1) * s.charAt(i) (mod TableSize)
+	return returnValue
+
+addTable()
+	set next to new SymbolTable
+	set next's previous table to this table
+
+getNext()
+	return next
+
+getPrev()
+	return prev
+
+setPrevious(SymbolTable st)
+	set prev to st
+
+
+[Element.java]
+Element() - Constructor
+	set name, type, and value to null
+
+Element(String t)
+	if t is "int"
+		set type to "NUM"
+	else if t is "float"
+		set type to "FLT"
+	else if t is "void"
+		set type to "VOID"
+	else
+		set type to t
+
+setName(String n)
+	set name to n
+
+setType(String t)
+	set type to t
+
+setValue(String v)
+	set value to v
+
+getName()
+	return name
+
+getType()
+	return type
+
+clone()     [Clone exists only for the ability to override]
+	return new Element
+
+
+[VarElement.java]  -extends Element
+VarElement(Element e) - Constructor
+	set name to e.getName()
+	set type to e.getType()
+
+clone()
+	create new VarElement with properties of this object
+	return created VarElement
+
+[ArrayElement]  -extends Element
+ArrayElement(Element e) - Constructor
+	set name to e.getName()
+	set type to e.getType()
+
+clone()
+	create new ArrayElement with properties of this object
+	return created ArrayElement
+
+[FunElement.java]  -extends Element
+FunElement(Element e)
+	set name to e.getName()
+	set type to e.getType()
+	set params to new Vector<Element>
+
+FunElement(String n, String t)
+	set name to n
+	set type to t
+	set params to new Vector<Element>
+
+addParam(Element p)
+	call add(p) on params Vector
+
+getParams()
+	return params
+
+clone()
+	create new FunElement with properties of this object
+	return created FunElement
+
+
+[LexicalAnalyzer.java]
+LexicalAnalyzer(File f) - Constructor
+	set file to f
+	if file is invalid or can't be read
+		print error and exit program
+	create Scanner (input) to read file
+
+getNextToken()
+	while token Vector is empty
+		if getMoreTokens() fails
+			return $ (end of file marker)
+	set returnToken to first token of token Vector
+	remove first token of Vector
+	return returnToken
+
+getMoreTokens()
+	while token Vector is empty
+		if input has next line
+			analyze() next line of input
+		else
+			return false
+	return true
+
+analyze(String s)
+	This method remains the same as the former implementation of 
+	LexicalAnalyzer.java with the exception of calls to print() being changed
+	to instead call addToken().
+
+addToken(String token)
+	This is the former print() method, which has been modified to create a new 
+	Token object for each token found and then add it to a Vector containing 
+	all of the tokens for the current line of input.
+
+isSpecialSymbol(String token)
+	This method remains the same as its previous implementation.
+
+
+[Token.java]
+Token(String tok, String typ) -  Constructor
+	set token to tok
+	set type to typ
+
+getToken()
+	return token
+
+getType()
+	return type
+
+
+GRAMMAR FUNCTIONS (Parser.java):
+	program()
+	decList()
+	decListTwo()
+	dec()
+	decTwo()
+	typeSpec()
+	varDec()
+	funDec()
+	params()
+	paramList()
+	pListTwo()
+	param()
+	paramPost()
+	voidParam()
+	cmpndStmt()
+	localDecs()
+	stmtList()
+	statement()
+	expnStmt()
+	selStmt()
+	selStmtTwo()
+	iterStmt()
+	returnStmt()
+	returnTwo()
+	expression()
+	expressOther()
+	expressID()
+	expressIDTwo()
+	expressIDVar()
+	expressIDCall()
+	var()
+	simpleExpn()
+	relop()
+	addExpn()
+	addExpnTwo()
+	addop()
+	term()
+	termTwo()
+	mulop()
+	factor()
+	factorAlt()
+	iden()
+	call()
+	args()
+	argList()
+	argListTwo()
